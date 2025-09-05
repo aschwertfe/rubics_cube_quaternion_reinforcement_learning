@@ -85,6 +85,10 @@ class Rubics_Cube:
         #             print("new: ",face)
 
         #print(f"success with axis: {axis} and depth: {depth}")
+
+        rl_return = -1
+
+        return rl_return
     
     def iterative_rotation(self):
         # update rotation iteratively for visualization

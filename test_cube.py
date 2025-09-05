@@ -1,5 +1,5 @@
-import cube_env as env
-import view
+import utils.cube_env as env
+import utils.view
 import numpy as np
 import time
 
