@@ -16,7 +16,7 @@ def test_visualization(cube, viewer, K:int):
         time.sleep(10.0)
     else:
         for k in range(K):
-            time.sleep(3.0)
+            time.sleep(1.0)
             randomized_rotation(cube)
             viewer.update_position()
             print("Server updating")
@@ -40,6 +40,6 @@ def test_rotation_correctness(cube, K:int):
 if __name__ == "__main__":
     cube = initialize_cube()
     viewer = initialize_server(cube)
-    test_visualization(cube, viewer, 10)
+    test_visualization(cube, viewer, 30)
     #test_rotation_correctness(cube, 1)
     #test_visualization(cube, viewer, 10)

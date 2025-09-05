@@ -46,8 +46,8 @@ class Visualizer(ViserServer):
                 #print(dir(faces_data[f]))
                 self.scene.remove_by_name("/face{k}of{idx}")
                 dimension = [1.0,1.0,1.0] - np.abs(0.98*face_data.get_axis())
-                print(dimension)
-                print(0.92*face_data.get_axis())
+                #print(dimension)
+                #print(0.92*face_data.get_axis())
                 dimension = [ entry * self.scale_cube for entry in dimension]
                 next_face = self.scene.add_box(
                     name=f"/face{k}of{idx}",
