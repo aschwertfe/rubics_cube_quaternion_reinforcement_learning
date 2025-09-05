@@ -1,4 +1,5 @@
 from viser import ViserServer
+import numpy as np
 
 
 class Visualizer(ViserServer):
@@ -10,6 +11,7 @@ class Visualizer(ViserServer):
         self.cube = cube
         self.indices = cube.indices
         self.scale_cube = 1.0
+        self.face_thickness = 0.02
         self.interior_color = (150,150,150)
 
         self.initial_drawing()
@@ -33,11 +35,32 @@ class Visualizer(ViserServer):
 
         f = 0
         for idx in indices:
+            # Update boxes
             self.boxes[idx].position = self.scale_cube * positions[idx]
 
-            fronts_data = self.cube.get_fronts(idx)
-            for front_data in fronts_data:
-                self.fronts[f].position = front_data.position
+            # Update faces
+            faces_data = self.cube.boxes[idx].get_faces()
+            for k,face_data in enumerate(faces_data):
+                #print(dir(self.scene))
+                #print("\n\n")
+                #print(dir(faces_data[f]))
+                self.scene.remove_by_name("/face{k}of{idx}")
+                dimension = [1.0,1.0,1.0] - np.abs(0.98*face_data.get_axis())
+                print(dimension)
+                print(0.92*face_data.get_axis())
+                dimension = [ entry * self.scale_cube for entry in dimension]
+                next_face = self.scene.add_box(
+                    name=f"/face{k}of{idx}",
+                    dimensions=dimension,
+                    color=face_data.color, # (100, 255, 100)
+                    position=face_data.get_position(),
+                )
+                self.faces[f] = next_face
+                # self.faces[f].position = face_data.get_position()
+                # dimension = [1.0,1.0,1.0] - 0.92*face_data.get_axis()
+                # print(dimension)
+                # dimension = [ entry * self.scale_cube for entry in dimension]
+                # self.faces[f].dimension = dimension
                 f += 1
         
         return
@@ -45,7 +68,7 @@ class Visualizer(ViserServer):
     def initial_drawing(self):
  
         self.boxes = {}
-        self.fronts = []
+        self.faces = []
         dim_interior = [self.scale_cube*entry for entry in [1.0,1.0,1.0]]
         for idx in self.indices:
             # Draw interior box:
@@ -56,17 +79,17 @@ class Visualizer(ViserServer):
                 position=(1.0,1.0,1.0),
             )
 
-            # Draw fronts by slim boxes:
-            fronts_data = self.cube.get_fronts(idx)
-            for front_data in fronts_data:
-                dimension = dim_interior
-                dimension[front_data.axis] = 0.1*self.scale_cube
-                next_front = self.scene.add_box(
-                    name=f"/box{idx}",
+            # Draw faces by slim boxes:
+            faces_data = self.cube.boxes[idx].get_faces()
+            for k,face_data in enumerate(faces_data):
+                dimension = [1.0,1.0,1.0] - 0.98*face_data.get_axis()
+                dimension = [ entry * self.scale_cube for entry in dimension]
+                next_face = self.scene.add_box(
+                    name=f"/face{k}of{idx}",
                     dimensions=dimension,
-                    color=front_data.color, # (100, 255, 100)
-                    position=front_data.position,
+                    color=face_data.color, # (100, 255, 100)
+                    position=face_data.get_position(),
                 )
-                self.fronts.append(next_front)
+                self.faces.append(next_face)
         
         return
