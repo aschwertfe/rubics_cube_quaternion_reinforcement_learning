@@ -1,4 +1,5 @@
 import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 import quaternion as quaternion
 import itertools
@@ -14,7 +15,25 @@ face_colors = {
 } 
 
 class RubicsCube(gym.Env):
-    def __init__(self, mode="quat"):
+
+    def __init__(self, mode="quat", disorder_turns=0):
+
+        super(RubicsCube, self).__init__()
+
+        self.action_space = spaces.Discrete(18)
+        self.observation_space = spaces.Box(
+            low=-1.1, 
+            high=1.1,   
+            shape=(81,),
+            dtype=np.float32
+        )
+        self.steps = 0
+        self.max_steps = 10
+        self.disorder_turns = disorder_turns
+        self.mode = mode
+        self.edge_length = 3
+        self.decimal_precision = 8
+
         if mode == "quat":
             self.init_quat()
         elif mode=="matrix":
@@ -22,8 +41,6 @@ class RubicsCube(gym.Env):
         else:
             KeyError("This mode does not exist.")
 
-        self.edge_length = 3
-        self.decimal_precision = 8
 
     def init_quat(self):
 
@@ -39,10 +56,6 @@ class RubicsCube(gym.Env):
         # Indices of the cube:
         indices = np.array(list(itertools.product([0, 1, 2], repeat=3)))
 
-        ### Depreceated: was for rotate_option2 only
-        # Position Cube: carries starting positions as indices at entries of the current position
-        # self.position_cube = np.reshape(indices, (3,3,3,3))
-
         # Mapping quaternion -> Index
         self.quat_to_idx = {pos_quats[i]: indices[i] for i in range(indices.shape[0])}
 
@@ -56,17 +69,55 @@ class RubicsCube(gym.Env):
         # define objects... define the assignment of faces
         self.make_parts()
 
+        # disorder the rubicss cube:
+        self.disorder(self.disorder_turns)
+
+    def disorder(self, turns=1):
+        for turn in range(turns):
+            choice = np.random.randint(low=0,high=3,size=2)
+            axis, depth = choice[0], choice[1]
+            dir = +1
+            self.rotate(axis, depth, dir, with_faces=True)
+
+    def reset(self, *, seed=None, options=None):
+
+        super().reset(seed=seed)
+        if self.mode == "quat":
+            self.init_quat()
+        else:
+            print("Error")
+
+        self.steps = 0
+
+        state = self.get_positions_fast().flatten()
+
+        return state, {}
+    
+    def _decodeAction(self,action):
+
+        axis = np.floor(action/6)
+        rest = action%6
+        depth = np.floor(rest/2)
+        dir = np.floor(rest%2) * 2 -1
+
+        return int(axis), int(depth), int(dir)
+
     def step(self, action):
 
-        axis = np.round(action[0])
-        depth = np.round(action[1])
-        dir = np.round(action[2])
+        self.steps += 1
+
+        axis,depth,dir = self._decodeAction(action)
         
         self.rotate(axis,depth,dir, False)
 
         done, reward, state = self.get_reward()
 
-        return state, reward, done, {}
+        state = state.flatten()
+
+        if self.steps >= self.max_steps:
+            done = True
+
+        return state, reward, done, False, {}
 
     def rotate(self, axis, depth, dir, with_faces=False):
 
@@ -92,7 +143,7 @@ class RubicsCube(gym.Env):
                     new_axis = rotation(face.axis)
                     face.axis = new_axis
                     
-        print(self.rotation_cube)
+        # print(self.rotation_cube)
 
     def get_reward(self):
 
@@ -123,7 +174,7 @@ class RubicsCube(gym.Env):
         return done, reward, positions
     
     def iterative_rotation(self):
-        # update rotation iteratively for visualization
+        # update rotation iteratively for visualization to visualize the movement of a turn
         return
     
     def get_positions_fast(self):
@@ -140,12 +191,7 @@ class RubicsCube(gym.Env):
         if quats:
             return self.indices, self.rotation_cube
         else:
-            positions = {}
-            for idx in self.indices:
-                p = self.rotation_cube[idx]
-                positions[idx] = p.imag
-
-            self.get_positions_fast()
+            positions = self.get_positions_fast()
             
             return self.indices, positions
     
