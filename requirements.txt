@@ -1,5 +1,7 @@
 # python 3.10.3
 numpy
 viser
+ray[rllib]
+gymnasium
 # use: python -m pip install --upgrade --force-reinstall numpy-quaternion
 # as explained on https://quaternion.readthedocs.io/en/latest/

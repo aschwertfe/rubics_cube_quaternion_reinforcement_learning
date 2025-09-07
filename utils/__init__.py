@@ -1,5 +1,5 @@
-from .cube_env import CustomEnv
-from .q_rl import RLAgent
-from .view import Visualization
+from .cube_env import RubicsCube
+from .dqn_agent import RLAgent
+from .view import Visualizer
 
-__all__ = ['CustomEnv', 'RLAgent', 'Visualization']
+__all__ = ['RubicsCube', 'RLAgent', 'Visualizer']

@@ -1,3 +1,4 @@
+import gymnasium as gym
 import numpy as np
 import quaternion as quaternion
 import itertools
@@ -5,14 +6,14 @@ from typing_extensions import List
 
 face_colors = {
     0: (255,0,0), # "red",
-    1: (255,255,255), # "white",
+    1: (0,255,255), # "turquoise",
     2: (255,255,0), # "yellow",
-    3: (0,255,0), # "green",
+    3: (50,255,0), # "green",
     4: (0,0,255), # "blue",
-    5: (200,100,0), # "orange"
+    5: (255,0,255), # "violet"
 } 
 
-class Rubics_Cube:
+class RubicsCube(gym.Env):
     def __init__(self, mode="quat"):
         if mode == "quat":
             self.init_quat()
@@ -22,7 +23,7 @@ class Rubics_Cube:
             KeyError("This mode does not exist.")
 
         self.edge_length = 3
-        self.visual_precision = 8
+        self.decimal_precision = 8
 
     def init_quat(self):
 
@@ -55,15 +56,28 @@ class Rubics_Cube:
         # define objects... define the assignment of faces
         self.make_parts()
 
+    def step(self, action):
+
+        axis = np.round(action[0])
+        depth = np.round(action[1])
+        dir = np.round(action[2])
+        
+        self.rotate(axis,depth,dir, False)
+
+        done, reward, state = self.get_reward()
+
+        return state, reward, done, {}
+
     def rotate(self, axis, depth, dir, with_faces=False):
 
+        depth = depth-1
         # 1. select plane elements
-        mask = np.reshape(np.array([depth-10**(-self.visual_precision) <= p.imag[axis] and p.imag[axis]<=depth+10**(-self.visual_precision)
+        mask = np.reshape(np.array([depth-10**(-self.decimal_precision) <= p.imag[axis] and p.imag[axis]<=depth+10**(-self.decimal_precision)
                                      for p in np.reshape( self.rotation_cube, (27) ) ] ),(3,3,3))
         plane = self.rotation_cube[mask]
 
         # 2. rotate these elements
-        q = np.quaternion(self.cos_half,0,0,0) + self.sin_half * np.quaternion(0,0==axis,1==axis,2==axis)
+        q = np.quaternion(self.cos_half,0,0,0) + dir * self.sin_half * np.quaternion(0,0==axis,1==axis,2==axis)
         rotation = lambda p: q * p * q ** (-1)
         plane = rotation(plane)
         self.rotation_cube[mask] = plane
@@ -78,21 +92,46 @@ class Rubics_Cube:
                     new_axis = rotation(face.axis)
                     face.axis = new_axis
                     
+        print(self.rotation_cube)
 
-        # for idx in self.indices:
-        #     if mask[idx]:
-        #         for face in self.boxes[idx].get_faces():
-        #             print("new: ",face)
+    def get_reward(self):
 
-        #print(f"success with axis: {axis} and depth: {depth}")
+        # Default reward
+        reward = -1
+        done = False
 
-        rl_return = -1
+        # Initializations
+        checks = []
+        positions = self.get_positions_fast()
+        
+        for axis_pos in range(3):
+            for depth in [0,2]:
+                #print(f"Check plane for axis {axis_pos} with depth {depth}")
+                plane = np.take(positions, depth, axis = axis_pos)
+                any_equal = []
+                for axis_quat in range(3):
+                    plane_imag = np.take(plane, axis_quat, axis = -1)
+                    check = np.all(np.isclose(plane_imag, plane_imag[-1,-1], atol=10**(-self.decimal_precision+2)))
+                    any_equal.append(check)
+                checks.append(np.any(any_equal))
 
-        return rl_return
+        # all planes must be correct:
+        if np.all(checks):
+            reward += 11
+            done=True
+
+        return done, reward, positions
     
     def iterative_rotation(self):
         # update rotation iteratively for visualization
         return
+    
+    def get_positions_fast(self):
+        positions = np.zeros((3,3,3,3))
+        for idx in self.indices:
+            p = self.rotation_cube[idx]
+            positions[idx] = p.imag
+        return positions
     
     def get_positions(self, quats: bool = False):
 
@@ -105,6 +144,8 @@ class Rubics_Cube:
             for idx in self.indices:
                 p = self.rotation_cube[idx]
                 positions[idx] = p.imag
+
+            self.get_positions_fast()
             
             return self.indices, positions
     
@@ -144,10 +185,10 @@ class Rubics_Cube:
         for idx in self.indices:
             p = self.rotation_cube[idx]
             rounded_p = np.quaternion(
-                np.round(p.real, decimals=self.visual_precision),
-                np.round(p.imag[0], decimals=self.visual_precision),
-                np.round(p.imag[1], decimals=self.visual_precision),
-                np.round(p.imag[2], decimals=self.visual_precision)
+                np.round(p.real, decimals=self.decimal_precision),
+                np.round(p.imag[0], decimals=self.decimal_precision),
+                np.round(p.imag[1], decimals=self.decimal_precision),
+                np.round(p.imag[2], decimals=self.decimal_precision)
             )
             self.rotation_cube[idx] = rounded_p
 
@@ -155,18 +196,18 @@ class Rubics_Cube:
                 for face in self.boxes[idx].faces:
                     p = face.position
                     rounded_p = np.quaternion(
-                        np.round(p.real, decimals=self.visual_precision),
-                        np.round(p.imag[0], decimals=self.visual_precision),
-                        np.round(p.imag[1], decimals=self.visual_precision),
-                        np.round(p.imag[2], decimals=self.visual_precision)
+                        np.round(p.real, decimals=self.decimal_precision),
+                        np.round(p.imag[0], decimals=self.decimal_precision),
+                        np.round(p.imag[1], decimals=self.decimal_precision),
+                        np.round(p.imag[2], decimals=self.decimal_precision)
                     )
                     face.position = rounded_p
                     a = face.axis
                     rounded_a = np.quaternion(
-                        np.round(a.real, decimals=self.visual_precision),
-                        np.round(a.imag[0], decimals=self.visual_precision),
-                        np.round(a.imag[1], decimals=self.visual_precision),
-                        np.round(a.imag[2], decimals=self.visual_precision)
+                        np.round(a.real, decimals=self.decimal_precision),
+                        np.round(a.imag[0], decimals=self.decimal_precision),
+                        np.round(a.imag[1], decimals=self.decimal_precision),
+                        np.round(a.imag[2], decimals=self.decimal_precision)
                     )
                     face.axis = rounded_a
 
