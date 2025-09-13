@@ -16,7 +16,7 @@ face_colors = {
 
 class RubicsCube(gym.Env):
 
-    def __init__(self, mode="quat", disorder_turns=0):
+    def __init__(self, mode="quat", disorder_turns=0, max_steps=10):
 
         super(RubicsCube, self).__init__()
 
@@ -28,7 +28,7 @@ class RubicsCube(gym.Env):
             dtype=np.float32
         )
         self.steps = 0
-        self.max_steps = 10
+        self.max_steps = max_steps
         self.disorder_turns = disorder_turns
         self.mode = mode
         self.edge_length = 3
@@ -102,13 +102,13 @@ class RubicsCube(gym.Env):
 
         return int(axis), int(depth), int(dir)
 
-    def step(self, action):
+    def step(self, action, with_faces = False):
 
         self.steps += 1
 
         axis,depth,dir = self._decodeAction(action)
         
-        self.rotate(axis,depth,dir, False)
+        self.rotate(axis,depth,dir, with_faces)
 
         done, reward, state = self.get_reward()
 

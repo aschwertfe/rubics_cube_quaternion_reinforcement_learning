@@ -139,6 +139,7 @@ celerybeat.pid
 .envrc
 .venv
 v_curl/
+data/
 v_curl
 .v_curl
 env/
